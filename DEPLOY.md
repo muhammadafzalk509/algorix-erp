@@ -1,5 +1,12 @@
 # Deployment — ALGORIX
 
+> ## ✅ LIVE (2026-06-20)
+> - **Frontend:** https://muhammadafzalk509.github.io/algorix-erp/
+> - **Backend:** https://algorix-backend.onrender.com — Render service `srv-d8qrvffavr4c73dol6p0` (free, singapore)
+> - **Health:** https://algorix-backend.onrender.com/api/health → `{ ok: true, roles: 12, users: 13 }`
+> - Backend Firestore creds come from a single `FIREBASE_SERVICE_ACCOUNT` env var (full JSON).
+> - Free tier sleeps after ~15 min idle; first request then cold-starts (~50s).
+
 - **Backend (NestJS)** → Render web service (free, supports WebSockets/Socket.IO)
 - **Frontend (Next.js)** → GitHub Pages (static export)
 - **Database** → Firestore (already live: project `erpsystem-67e17`)
