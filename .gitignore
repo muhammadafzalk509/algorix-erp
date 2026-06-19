@@ -1,0 +1,36 @@
+# ── dependencies ──
+node_modules/
+**/node_modules/
+
+# ── build output ──
+dist/
+**/dist/
+.next/
+**/.next/
+out/
+**/out/
+build/
+*.tsbuildinfo
+
+# ── secrets (NEVER commit) ──
+.env
+.env.*
+!.env.example
+!.env.firebase.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.firebase.example
+serviceAccountKey.json
+**/serviceAccountKey.json
+*.pem
+*.key
+
+# ── logs ──
+*.log
+logs/
+
+# ── local tooling ──
+.claude/
+.DS_Store
+Thumbs.db

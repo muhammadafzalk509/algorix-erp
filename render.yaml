@@ -1,0 +1,76 @@
+# Render Blueprint — deploys the ALGORIX NestJS backend as a web service.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# How to use:
+#   1. Push this repo to GitHub.
+#   2. In Render → New → Blueprint → connect this repo. Render reads render.yaml.
+#   3. Fill in the env vars marked `sync: false` (secrets) in the dashboard.
+#
+# NOTE: the free plan spins the service down after ~15 min idle; the first
+#       request after that cold-starts in ~50s. Upgrade to a paid plan to
+#       keep it always-on.
+services:
+  - type: web
+    name: algorix-backend
+    runtime: node
+    plan: free
+    region: singapore # closest free region to the Firestore db (asia-south1 / Mumbai)
+    rootDir: backend
+    # --include=dev so the NestJS CLI + TypeScript (devDependencies) are present for the build.
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Render injects PORT automatically; main.ts reads process.env.PORT.
+
+      # ── JWT (auto-generated strong secrets) ──
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+
+      # ── CORS: set to your GitHub Pages origin, e.g.
+      #    https://muhammadafzalk509.github.io  ──
+      - key: FRONTEND_URL
+        sync: false
+
+      # ── Firebase / Firestore service account (set in dashboard) ──
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY # paste the full key incl. -----BEGIN/END----- lines
+        sync: false
+
+      # ── Cloudflare R2 (document storage) ──
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
+
+      # ── SMTP (email) ──
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+
+      # ── Google Sign-In ──
+      - key: GOOGLE_CLIENT_ID
+        sync: false
