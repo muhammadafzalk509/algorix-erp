@@ -69,7 +69,18 @@ export class FirestoreService implements OnModuleInit {
       return;
     }
 
-    // 2) Service account from individual env vars.
+    // 2) Full service account JSON in a single env var (easiest on hosts like
+    //    Render: paste the entire downloaded key file as FIREBASE_SERVICE_ACCOUNT).
+    const saJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (saJson) {
+      const sa = JSON.parse(saJson);
+      if (typeof sa.private_key === 'string')
+        sa.private_key = sa.private_key.replace(/\\n/g, '\n');
+      initializeApp({ credential: cert(sa) });
+      return;
+    }
+
+    // 3) Service account from individual env vars.
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     let privateKey = process.env.FIREBASE_PRIVATE_KEY;
     if (projectId && clientEmail && privateKey) {
@@ -78,7 +89,7 @@ export class FirestoreService implements OnModuleInit {
       return;
     }
 
-    // 3) Service account JSON file.
+    // 4) Service account JSON file.
     const keyPath =
       process.env.GOOGLE_APPLICATION_CREDENTIALS ||
       path.resolve(process.cwd(), 'serviceAccountKey.json');
