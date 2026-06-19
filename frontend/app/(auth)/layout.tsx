@@ -1,3 +1,9 @@
+// GitHub Pages serves the app from a subpath (/algorix-erp), so static assets in
+// /public must be prefixed with the base path or they 404. NEXT_PUBLIC_BASE_PATH is
+// inlined at build time (empty for local dev → served from /).
+const base = process.env.NEXT_PUBLIC_BASE_PATH || '';
+const logo = `${base}/algorix.png`;
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -5,8 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       // ALGORIX hero image (frontend/public/algorix.png), darkened so the form stays readable.
       // If the file is absent, the brand gradient above shows instead — nothing breaks.
       style={{
-        backgroundImage:
-          "linear-gradient(rgba(3,7,18,0.82), rgba(3,7,18,0.92)), url('/algorix.png')",
+        backgroundImage: `linear-gradient(rgba(3,7,18,0.72), rgba(3,7,18,0.88)), url('${logo}')`,
       }}
     >
       <div className="grid min-h-screen place-items-center p-4">
@@ -14,7 +19,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="mb-6 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/algorix.png"
+              src={logo}
               alt="ALGORIX"
               className="mx-auto mb-3 h-28 w-28 rounded-2xl object-cover shadow-2xl ring-1 ring-cyan-400/30"
             />
