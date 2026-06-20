@@ -33,7 +33,12 @@ export class MailService {
       );
       return;
     }
-    const from = this.config.get<string>('SMTP_USER') || 'no-reply@erp.local';
+    // MAIL_FROM lets the visible sender differ from the SMTP login — needed for
+    // relays like Brevo/SendGrid where the login isn't a real from-address.
+    const from =
+      this.config.get<string>('MAIL_FROM') ||
+      this.config.get<string>('SMTP_USER') ||
+      'no-reply@erp.local';
     await this.transporter.sendMail({ from, to, subject, html });
     this.logger.log(`📧 Email sent to ${to} — "${subject}"`);
   }
