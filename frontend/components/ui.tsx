@@ -5,6 +5,7 @@ import {
   type TextareaHTMLAttributes,
   type ReactNode,
 } from 'react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Button({
@@ -144,4 +145,89 @@ export function StatusBadge({ status }: { status: string }) {
           ? 'rose'
           : 'blue';
   return <Badge color={color}>{status}</Badge>;
+}
+
+/* ------------------------------- Modal / Dialog ---------------------------- */
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  wide,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  wide?: boolean;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="animate-fade-in fixed inset-0 z-[150] grid place-items-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className={cn(
+          'animate-pop-in max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-800',
+          wide ? 'max-w-2xl' : 'max-w-md',
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        {children}
+        {footer && <div className="mt-5 flex justify-end gap-2">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+export function ConfirmDialog({
+  open,
+  title = 'Are you sure?',
+  message,
+  confirmLabel = 'Confirm',
+  danger,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title?: string;
+  message: ReactNode;
+  confirmLabel?: string;
+  danger?: boolean;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal
+      open={open}
+      onClose={onCancel}
+      title={title}
+      footer={
+        <>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+          <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} disabled={busy}>
+            {busy ? 'Working…' : confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-600 dark:text-slate-300">{message}</p>
+    </Modal>
+  );
 }

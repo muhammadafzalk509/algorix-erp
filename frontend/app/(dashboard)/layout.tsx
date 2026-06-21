@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { navSectionsForTier, layerOfTier, TIER_LABEL } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { Toaster } from '@/components/toast';
 import { LogOut } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const id = setInterval(ping, 3 * 60 * 1000);
     return () => clearInterval(id);
   }, [user]);
+
+  // Unread-notification count → pulsing banner badge on the Notifications nav item.
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    const refresh = () =>
+      api
+        .get<{ isRead: boolean }[]>('/notifications')
+        .then((list) => setUnread(list.filter((n) => !n.isRead).length))
+        .catch(() => {});
+    refresh();
+    const id = setInterval(refresh, 60 * 1000);
+    return () => clearInterval(id);
+  }, [user, pathname]);
 
   if (loading || !user)
     return <div className="grid min-h-screen place-items-center text-slate-400">Loading…</div>;
@@ -55,6 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const active = pathname === item.href;
+                  const badge = item.href === '/notifications' ? unread : 0;
                   return (
                     <Link
                       key={item.href}
@@ -67,7 +83,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       )}
                     >
                       <Icon size={17} />
-                      {item.label}
+                      <span className="flex-1">{item.label}</span>
+                      {badge > 0 && (
+                        <span className="animate-pulse-ring grid h-5 min-w-[20px] place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
+                          {badge > 9 ? '9+' : badge}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -95,6 +116,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
+      <Toaster />
     </div>
   );
 }

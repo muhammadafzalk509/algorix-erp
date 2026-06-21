@@ -5,3 +5,80 @@
 body {
   @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-900 dark:text-slate-100;
 }
+
+/* ---- thin custom scrollbars (sidebar, tables, modals) ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.5);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139 / 0.7);
+}
+
+/* ---- animations (toasts, modals, banner badges) ---- */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-pop-in {
+  animation: pop-in 0.18s ease-out;
+}
+
+/* Pulsing ring for "new"/alert badges on nav items & buttons. */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgb(225 29 72 / 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgb(225 29 72 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(225 29 72 / 0);
+  }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 1.8s infinite;
+}

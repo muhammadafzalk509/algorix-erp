@@ -22,6 +22,7 @@ export class CreateUserDto {
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() department?: string;
   @IsOptional() @IsString() designation?: string;
+  @IsOptional() @IsString() employeeId?: string;
 }
 
 export class UpdateUserDto {
@@ -31,6 +32,7 @@ export class UpdateUserDto {
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() department?: string;
   @IsOptional() @IsString() designation?: string;
+  @IsOptional() @IsString() employeeId?: string; // HR/staff code (not the DB id)
   @IsOptional() @IsInt() roleId?: number;
 }
 

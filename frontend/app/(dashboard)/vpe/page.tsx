@@ -5,16 +5,21 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { can } from '@/lib/permissions';
-import { Button, Card, CardTitle, Input, Label, PageHeader, Select, StatusBadge } from '@/components/ui';
+import { Button, Card, CardTitle, Input, Label, Modal, PageHeader, Select, StatusBadge } from '@/components/ui';
+import { toast } from '@/components/toast';
 import {
   Activity, AlertTriangle, BarChart2, Boxes, CheckCircle2, CheckSquare, Clock, Cpu,
   FileText, GanttChartSquare, Gauge, GitBranch, ListChecks, MessageSquare, ScrollText,
   Send, ShieldAlert, TrendingUp, Users as UsersIcon,
 } from 'lucide-react';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+} from 'recharts';
 
 /* ---------------------------------- types --------------------------------- */
 interface Project { id: number; title: string; status: string; priority?: string; startDate: string | null; endDate: string | null; client?: { name: string } | null; }
-interface Task { id: number; title: string; status: string; priority: string; dueDate?: string | null; project?: { title: string }; assignee?: { id?: number; firstName: string; lastName: string } | null; }
+interface Task { id: number; projectId?: number; title: string; status: string; priority: string; dueDate?: string | null; project?: { title: string }; assignee?: { id?: number; firstName: string; lastName: string } | null; }
 interface Progress { id: number; title: string; status: string; progress: number; client: string | null; endDate: string | null; lastUpdated: string | null; }
 interface PersonStat { id: number; name: string; role: string; total: number; done: number; inProgress: number; overdue: number; completion: number; }
 interface Team { key: string; label: string; roles: string[]; members: number; totalTasks: number; done: number; inProgress: number; todo: number; overdue: number; completion: number; people: PersonStat[]; }
@@ -24,7 +29,7 @@ interface TeamGroup { key: string; label: string; members: TeamMember[] }
 interface Notification { id: number; title: string; message: string; createdAt: string; category?: string | null }
 interface Bug { id: number; title?: string; severity?: string; status?: string }
 interface AuditRow { id: number; action: string; method: string; statusCode?: number; createdAt: string; userId?: number | null }
-interface OrgUser { id: number; firstName: string; lastName: string; role: { name: string; permissionTier: string }; status: string }
+interface OrgUser { id: number; firstName: string; lastName: string; role: { name: string; permissionTier: string }; status: string; designation?: string | null; department?: string | null; avatarUrl?: string | null; employeeId?: string | null; email?: string }
 
 /* -------------------------------- sections -------------------------------- */
 const SECTIONS = [
@@ -190,9 +195,9 @@ export default function VpePortalPage() {
           ) : (
             <>
               {active === 'dashboard' && <DashboardSection m={m} overview={overview} notifications={notifications} audit={audit} />}
-              {active === 'monitoring' && <MonitoringSection overview={overview} bugs={bugs} />}
+              {active === 'monitoring' && <MonitoringSection overview={overview} bugs={bugs} users={users} />}
               {active === 'projects' && <ProjectsSection projects={projects} progress={progress} />}
-              {active === 'tasks' && <TasksSection tasks={tasks} groups={groups} reload={load} />}
+              {active === 'tasks' && <TasksSection tasks={tasks} groups={groups} projects={projects} reload={load} />}
               {active === 'gantt' && <GanttSection progress={progress} />}
               {active === 'reports' && <ReportsSection projects={projects} />}
               {active === 'performance' && <PerformanceSection overview={overview} />}
@@ -290,12 +295,15 @@ function DashboardSection({ m, overview, notifications, audit }: { m: any; overv
 }
 
 /* ---------------------------- 2. Team Monitoring --------------------------- */
-function MonitoringSection({ overview, bugs }: { overview: Overview | null; bugs: Bug[] | null }) {
+const initials = (name: string) => name.split(' ').filter(Boolean).map((x) => x[0]).slice(0, 2).join('').toUpperCase();
+
+function MonitoringSection({ overview, bugs, users }: { overview: Overview | null; bugs: Bug[] | null; users: OrgUser[] }) {
   const team = (key: string) => overview?.teams.find((t) => t.key === key);
   const dev = team('development');
   const qa = team('qa');
   const iot = team('iot');
   const doc = team('documentation');
+  const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 
   const critical = bugs?.filter((b) => (b.severity ?? '').toUpperCase() === 'CRITICAL').length ?? 0;
   const openBugs = bugs?.filter((b) => ['OPEN', 'IN_PROGRESS'].includes((b.status ?? '').toUpperCase())).length ?? 0;
@@ -303,15 +311,15 @@ function MonitoringSection({ overview, bugs }: { overview: Overview | null; bugs
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-slate-500">Monitor every department head. Live task metrics are shown; engineering-tool metrics activate once integrated.</p>
+      <p className="text-sm text-slate-500">Monitor every department head and team member — profile, designation, department and live progress on assigned work.</p>
 
       {/* Head of Development */}
-      <HeadCard title="Head of Development" team={dev} accent="#1f4e79">
+      <HeadCard title="Head of Development" team={dev} accent="#1f4e79" userMap={userMap}>
         <Planned title="Engineering signals" needs="Git + CI integration" fields={['Git Commits Summary', 'Code Review Status', 'Team Velocity', 'Sprint Status', 'Performance Graph']} />
       </HeadCard>
 
       {/* Head of QA */}
-      <HeadCard title="Head of QA" team={qa} accent="#7c3aed">
+      <HeadCard title="Head of QA" team={qa} accent="#7c3aed" userMap={userMap}>
         <Card>
           <CardTitle>Bug Reports {bugs === null && <span className="text-[10px] text-amber-600">(restricted)</span>}</CardTitle>
           <div className="grid grid-cols-3 gap-3 text-center">
@@ -324,19 +332,19 @@ function MonitoringSection({ overview, bugs }: { overview: Overview | null; bugs
       </HeadCard>
 
       {/* Head of IoT */}
-      <HeadCard title="Head of IoT" team={iot} accent="#ea580c">
+      <HeadCard title="Head of IoT" team={iot} accent="#ea580c" userMap={userMap}>
         <Planned title="Hardware & devices" needs="an IoT device/telemetry gateway" fields={['Hardware Status', 'Device Connectivity', 'Firmware Version', 'Sensor Status', 'Device Health', 'Deployment Status', 'Integration Progress', 'Production Readiness']} />
       </HeadCard>
 
       {/* Head of Documentation */}
-      <HeadCard title="Head of Documentation" team={doc} accent="#0891b2">
+      <HeadCard title="Head of Documentation" team={doc} accent="#0891b2" userMap={userMap}>
         <Planned title="Document tracking" needs="a structured docs register (SRS/SDS/API)" fields={['SRS Status', 'SDS Status', 'API Documentation', 'User Manual', 'Release Notes', 'Approved Documents', 'Review Status', 'Completion %', 'Version History']} />
       </HeadCard>
     </div>
   );
 }
 
-function HeadCard({ title, team, accent, children }: { title: string; team?: Team; accent: string; children: React.ReactNode }) {
+function HeadCard({ title, team, accent, userMap, children }: { title: string; team?: Team; accent: string; userMap: Map<number, OrgUser>; children: React.ReactNode }) {
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
@@ -356,11 +364,31 @@ function HeadCard({ title, team, accent, children }: { title: string; team?: Tea
           </div>
           <div className="mb-3 overflow-x-auto">
             <table className="w-full text-xs">
-              <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400"><th className="pb-1">Member</th><th className="pb-1">Role</th><th className="pb-1 text-center">Done/Total</th><th className="pb-1 text-right">Progress</th></tr></thead>
+              <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400"><th className="pb-1">Member</th><th className="pb-1">Designation</th><th className="pb-1">Department</th><th className="pb-1 text-center">Done/Total</th><th className="pb-1 text-center">Overdue</th><th className="pb-1 text-right">Progress</th></tr></thead>
               <tbody className="divide-y divide-slate-50">
-                {team.people.map((p) => (
-                  <tr key={p.id}><td className="py-1 text-slate-700">{p.name}</td><td className="py-1 text-slate-400">{p.role}</td><td className="py-1 text-center text-slate-600">{p.done}/{p.total}</td><td className="py-1 text-right font-semibold" style={{ color: accent }}>{p.completion}%</td></tr>
-                ))}
+                {team.people.map((p) => {
+                  const u = userMap.get(p.id);
+                  return (
+                    <tr key={p.id}>
+                      <td className="py-1.5">
+                        <div className="flex items-center gap-2">
+                          {u?.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={u.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-slate-200" />
+                          ) : (
+                            <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-600 dark:bg-slate-600 dark:text-slate-200">{initials(p.name)}</span>
+                          )}
+                          <span className="text-slate-700">{p.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-1.5 text-slate-500">{u?.designation || p.role}</td>
+                      <td className="py-1.5 text-slate-400">{u?.department || '—'}</td>
+                      <td className="py-1.5 text-center text-slate-600">{p.done}/{p.total}</td>
+                      <td className="py-1.5 text-center text-rose-600">{p.overdue || '—'}</td>
+                      <td className="py-1.5 text-right font-semibold" style={{ color: accent }}>{p.completion}%</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -426,26 +454,75 @@ function ProjectsSection({ projects, progress }: { projects: Project[]; progress
 
 /* --------------------------- 4. Task Management ---------------------------- */
 const STATUSES = ['TODO', 'IN_PROGRESS', 'REVIEW', 'TESTING', 'DONE'];
-function TasksSection({ tasks, groups, reload }: { tasks: Task[]; groups: TeamGroup[]; reload: () => void }) {
+const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+// ISO → value for <input type="datetime-local"> (local time, no seconds).
+function toLocalInput(iso?: string | null) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function TasksSection({ tasks, groups, projects, reload }: { tasks: Task[]; groups: TeamGroup[]; projects: Project[]; reload: () => void }) {
   const [busy, setBusy] = useState<number | null>(null);
   const members = useMemo(() => groups.flatMap((g) => g.members), [groups]);
 
+  const [edit, setEdit] = useState<Task | null>(null);
+  const [form, setForm] = useState({ title: '', projectId: '', assignedTo: '', dueDate: '', priority: 'MEDIUM', status: 'TODO' });
+  const [saving, setSaving] = useState(false);
+  const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  function openEdit(t: Task) {
+    setForm({
+      title: t.title,
+      projectId: String(t.projectId ?? ''),
+      assignedTo: String(t.assignee?.id ?? ''),
+      dueDate: toLocalInput(t.dueDate),
+      priority: t.priority || 'MEDIUM',
+      status: t.status || 'TODO',
+    });
+    setEdit(t);
+  }
+
   async function setStatus(id: number, status: string) {
     setBusy(id);
-    try { await api.patch(`/tasks/${id}/status`, { status }); reload(); } catch (e) { alert((e as Error).message); } finally { setBusy(null); }
+    try { await api.patch(`/tasks/${id}/status`, { status }); toast.success('Status updated.'); reload(); } catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
   }
   async function reassign(id: number, userId: string) {
     if (!userId) return;
     setBusy(id);
-    try { await api.post(`/tasks/${id}/assign`, { assignedTo: Number(userId) }); reload(); } catch (e) { alert((e as Error).message); } finally { setBusy(null); }
+    try { await api.post(`/tasks/${id}/assign`, { assignedTo: Number(userId) }); toast.success('Task reassigned.'); reload(); } catch (e) { toast.error((e as Error).message); } finally { setBusy(null); }
   }
+  async function saveEdit() {
+    if (!edit) return;
+    setSaving(true);
+    try {
+      const payload: Record<string, unknown> = {
+        title: form.title,
+        priority: form.priority,
+        status: form.status,
+        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
+      };
+      if (form.projectId) payload.projectId = Number(form.projectId);
+      if (form.assignedTo) payload.assignedTo = Number(form.assignedTo);
+      await api.put(`/tasks/${edit.id}`, payload);
+      toast.success('Task updated.');
+      setEdit(null);
+      reload();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Card>
       <CardTitle>All Team Tasks ({tasks.length})</CardTitle>
-      <p className="mb-3 text-xs text-slate-400">Update status or reassign across teams. Use <Link href="/tasks" className="text-brand underline">Tasks</Link> to create new ones.</p>
+      <p className="mb-3 text-xs text-slate-400">Edit any field (incl. due date &amp; time), update status or reassign across teams. Use <Link href="/tasks" className="text-brand underline">Tasks</Link> to create new ones.</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500"><th className="px-2 py-2">Task</th><th className="px-2 py-2">Project</th><th className="px-2 py-2">Assignee</th><th className="px-2 py-2">Due</th><th className="px-2 py-2">Priority</th><th className="px-2 py-2">Status</th><th className="px-2 py-2">Reassign</th></tr></thead>
+          <thead><tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500"><th className="px-2 py-2">Task</th><th className="px-2 py-2">Project</th><th className="px-2 py-2">Assignee</th><th className="px-2 py-2">Due</th><th className="px-2 py-2">Priority</th><th className="px-2 py-2">Status</th><th className="px-2 py-2">Reassign</th><th className="px-2 py-2 text-right">Edit</th></tr></thead>
           <tbody className="divide-y divide-slate-100">
             {tasks.map((t) => {
               const overdue = t.dueDate && new Date(t.dueDate).getTime() < Date.now() && t.status !== 'DONE';
@@ -454,7 +531,7 @@ function TasksSection({ tasks, groups, reload }: { tasks: Task[]; groups: TeamGr
                   <td className="px-2 py-2 text-slate-700">{t.title}</td>
                   <td className="px-2 py-2 text-slate-500">{t.project?.title ?? '—'}</td>
                   <td className="px-2 py-2 text-slate-500">{t.assignee ? `${t.assignee.firstName} ${t.assignee.lastName}` : '—'}</td>
-                  <td className="px-2 py-2"><span className={overdue ? 'font-semibold text-rose-600' : 'text-slate-500'}>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—'}</span></td>
+                  <td className="px-2 py-2"><span className={overdue ? 'font-semibold text-rose-600' : 'text-slate-500'}>{t.dueDate ? new Date(t.dueDate).toLocaleString() : '—'}</span></td>
                   <td className="px-2 py-2"><StatusBadge status={t.priority} /></td>
                   <td className="px-2 py-2">
                     <Select value={t.status} onChange={(e) => setStatus(t.id, e.target.value)} className="w-32 py-1 text-xs">{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</Select>
@@ -462,13 +539,59 @@ function TasksSection({ tasks, groups, reload }: { tasks: Task[]; groups: TeamGr
                   <td className="px-2 py-2">
                     <Select defaultValue="" onChange={(e) => reassign(t.id, e.target.value)} className="w-40 py-1 text-xs"><option value="">Reassign…</option>{members.map((mem) => <option key={mem.id} value={mem.id}>{mem.name}</option>)}</Select>
                   </td>
+                  <td className="px-2 py-2 text-right">
+                    <Button variant="outline" className="px-2.5 py-1 text-xs" onClick={() => openEdit(t)}>Edit</Button>
+                  </td>
                 </tr>
               );
             })}
-            {tasks.length === 0 && <tr><td className="px-2 py-3 text-slate-400" colSpan={7}>No tasks.</td></tr>}
+            {tasks.length === 0 && <tr><td className="px-2 py-3 text-slate-400" colSpan={8}>No tasks.</td></tr>}
           </tbody>
         </table>
       </div>
+
+      <Modal
+        open={!!edit}
+        onClose={() => setEdit(null)}
+        title="Edit task"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setEdit(null)} disabled={saving}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div><Label>Task title</Label><Input value={form.title} onChange={(e) => setF('title', e.target.value)} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Project</Label>
+              <Select value={form.projectId} onChange={(e) => setF('projectId', e.target.value)}>
+                <option value="">— unchanged —</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </Select>
+            </div>
+            <div>
+              <Label>Assignee</Label>
+              <Select value={form.assignedTo} onChange={(e) => setF('assignedTo', e.target.value)}>
+                <option value="">— unassigned —</option>
+                {members.map((mem) => <option key={mem.id} value={mem.id}>{mem.name}</option>)}
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Priority</Label>
+              <Select value={form.priority} onChange={(e) => setF('priority', e.target.value)}>{PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}</Select>
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={form.status} onChange={(e) => setF('status', e.target.value)}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</Select>
+            </div>
+          </div>
+          <div><Label>Due date &amp; time</Label><Input type="datetime-local" value={form.dueDate} onChange={(e) => setF('dueDate', e.target.value)} /></div>
+        </div>
+      </Modal>
     </Card>
   );
 }
@@ -657,31 +780,85 @@ function CommsSection({ notifications }: { notifications: Notification[] }) {
 }
 
 /* ------------------------------ 12. Analytics ------------------------------ */
+const PIE_COLORS = ['#94a3b8', '#3b82f6', '#a855f7', '#eab308', '#16a34a'];
 function AnalyticsSection({ overview, tasks, projects }: { overview: Overview | null; tasks: Task[]; projects: Project[] }) {
-  const byStatus = STATUSES.map((s) => ({ s, n: tasks.filter((t) => t.status === s).length }));
-  const max = Math.max(1, ...byStatus.map((x) => x.n));
+  const pieData = STATUSES
+    .map((s) => ({ name: s, value: tasks.filter((t) => t.status === s).length }))
+    .filter((d) => d.value > 0);
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const deadlineData = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today.getTime() + i * DAY);
+    return {
+      day: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      due: tasks.filter((t) => t.dueDate && new Date(t.dueDate).toDateString() === d.toDateString() && t.status !== 'DONE').length,
+    };
+  });
+
+  const people = useMemo(
+    () => (overview?.teams ?? []).flatMap((t) => t.people.map((p) => ({ ...p, team: t.label }))),
+    [overview],
+  );
+
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardTitle>Task Status Distribution</CardTitle>
-          <div className="space-y-2">
-            {byStatus.map((x) => (<div key={x.s}><div className="mb-1 flex justify-between text-xs"><span className="text-slate-600">{x.s}</span><span className="text-slate-500">{x.n}</span></div><Bar value={(x.n / max) * 100} /></div>))}
-          </div>
-        </Card>
-        <Card>
-          <CardTitle>Team Comparison (completion)</CardTitle>
-          <div className="space-y-2">
-            {overview?.teams.map((t) => (<div key={t.key}><div className="mb-1 flex justify-between text-xs"><span className="text-slate-600">{t.label}</span><span className="font-semibold text-brand">{t.completion}%</span></div><Bar value={t.completion} /></div>))}
-            {!overview && <p className="text-sm text-slate-400">No data.</p>}
-          </div>
-        </Card>
-      </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Total Tasks" value={tasks.length} />
         <Stat label="Projects" value={projects.length} />
         <Stat label="Org Completion" value={`${overview?.totals.completion ?? 0}%`} />
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardTitle>Task Status Distribution</CardTitle>
+          {pieData.length === 0 ? <p className="text-sm text-slate-400">No tasks.</p> : (
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
+                  {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+        <Card>
+          <CardTitle>Upcoming Deadlines (next 14 days)</CardTitle>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={deadlineData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="day" tick={{ fontSize: 10 }} interval={1} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Line type="monotone" dataKey="due" stroke="#1f4e79" strokeWidth={2} dot={{ r: 3 }} name="Tasks due" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <Card>
+        <CardTitle>Employee Performance</CardTitle>
+        {people.length === 0 ? <p className="text-sm text-slate-400">No team members.</p> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500"><th className="px-2 py-2">Employee</th><th className="px-2 py-2">Team</th><th className="px-2 py-2 text-center">Done/Total</th><th className="px-2 py-2 text-center">Overdue</th><th className="px-2 py-2 text-right">Completion</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {people.map((p) => (
+                  <tr key={`${p.team}-${p.id}`}>
+                    <td className="px-2 py-2 text-slate-700">{p.name}</td>
+                    <td className="px-2 py-2 text-slate-400">{p.team}</td>
+                    <td className="px-2 py-2 text-center">{p.done}/{p.total}</td>
+                    <td className="px-2 py-2 text-center text-rose-600">{p.overdue}</td>
+                    <td className="px-2 py-2 text-right font-semibold text-brand">{p.completion}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
       <Planned title="Agile analytics" needs="sprint + test-coverage data" fields={['Burndown Chart', 'Velocity Chart', 'Sprint Analytics', 'Bug Analytics', 'Test Coverage', 'Productivity Trends', 'Department Comparison']} />
     </div>
   );

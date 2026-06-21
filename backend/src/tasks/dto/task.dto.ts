@@ -19,6 +19,7 @@ export class CreateTaskDto {
 }
 
 export class UpdateTaskDto {
+  @IsOptional() @IsInt() projectId?: number;
   @IsOptional() @IsString() title?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsInt() assignedTo?: number;

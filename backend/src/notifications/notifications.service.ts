@@ -125,4 +125,26 @@ export class NotificationsService {
     );
     return { ok: true };
   }
+
+  async update(
+    id: number,
+    userId: number,
+    dto: { title?: string; message?: string },
+  ) {
+    const n = await this.fs.findById<NotificationDoc>(COL.notifications, id);
+    if (!n || n.userId !== userId)
+      throw new NotFoundException('Notification not found.');
+    const patch: Record<string, unknown> = {};
+    if (dto.title !== undefined) patch.title = dto.title;
+    if (dto.message !== undefined) patch.message = dto.message;
+    return this.fs.update(COL.notifications, id, patch);
+  }
+
+  async remove(id: number, userId: number) {
+    const n = await this.fs.findById<NotificationDoc>(COL.notifications, id);
+    if (!n || n.userId !== userId)
+      throw new NotFoundException('Notification not found.');
+    await this.fs.delete(COL.notifications, id);
+    return { ok: true };
+  }
 }

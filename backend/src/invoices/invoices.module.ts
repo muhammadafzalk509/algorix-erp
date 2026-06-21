@@ -79,19 +79,19 @@ class InvoicesService {
 class InvoicesController {
   constructor(private readonly invoices: InvoicesService) {}
 
-  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1, PermissionTier.TIER_2)
+  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1)
   @Get()
   findAll() {
     return this.invoices.findAll();
   }
 
-  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1, PermissionTier.TIER_2)
+  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1)
   @Post()
   create(@Body() dto: CreateInvoiceDto) {
     return this.invoices.create(dto);
   }
 
-  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1, PermissionTier.TIER_2)
+  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1)
   @Put(':id/status')
   setStatus(
     @Param('id', ParseIntPipe) id: number,
@@ -100,7 +100,7 @@ class InvoicesController {
     return this.invoices.setStatus(id, dto.status);
   }
 
-  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1, PermissionTier.TIER_2)
+  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1)
   @Get(':id/pdf')
   async pdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const inv = await this.invoices.getFull(id);

@@ -60,6 +60,7 @@ interface RawUser {
   roleId: number;
   department?: string | null;
   designation?: string | null;
+  employeeId?: string | null;
   avatarUrl?: string | null;
   joiningDate?: Date | null;
   status: string;
@@ -186,6 +187,7 @@ export class UsersService {
       phone: dto.phone ?? null,
       department: dto.department ?? null,
       designation: dto.designation ?? null,
+      employeeId: dto.employeeId ?? null,
       passwordHash,
       roleId: dto.roleId,
       status: 'ACTIVE',
@@ -215,6 +217,7 @@ export class UsersService {
     if (dto.phone !== undefined) data.phone = dto.phone;
     if (dto.department !== undefined) data.department = dto.department;
     if (dto.designation !== undefined) data.designation = dto.designation;
+    if (dto.employeeId !== undefined) data.employeeId = dto.employeeId;
 
     // Only CEO/CTO may change a user's role; block promoting anyone to CEO.
     if (dto.roleId !== undefined && dto.roleId !== target.roleId) {

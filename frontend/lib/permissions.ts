@@ -127,7 +127,7 @@ export const NAV: NavItem[] = [
   { label: 'Analytics', href: '/analytics', icon: BarChart3, tiers: ['TIER_0', 'TIER_1', 'TIER_2', 'TIER_3'], section: 'Management' },
   { label: 'Clients', href: '/clients', icon: Building2, tiers: ['TIER_0', 'TIER_1', 'TIER_2'], section: 'Management' },
   { label: 'Leads', href: '/leads', icon: Target, tiers: ['TIER_0', 'TIER_1', 'TIER_2'], section: 'Management' },
-  { label: 'Invoices', href: '/invoices', icon: Receipt, tiers: ['TIER_0', 'TIER_1', 'TIER_2'], section: 'Management' },
+  { label: 'Invoices', href: '/invoices', icon: Receipt, tiers: ['TIER_0', 'TIER_1'], section: 'Management' },
   { label: 'Signup Requests', href: '/cto/signup-requests', icon: UserCheck, tiers: ['TIER_0', 'TIER_1'], section: 'Management' },
 
   // Development layer

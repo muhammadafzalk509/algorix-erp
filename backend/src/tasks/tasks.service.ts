@@ -115,6 +115,7 @@ export class TasksService {
     await this.ensureExists(id);
     if (dto.assignedTo) await this.assertAssignee(dto.assignedTo);
     const data: Record<string, unknown> = {};
+    if (dto.projectId !== undefined) data.projectId = dto.projectId;
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.assignedTo !== undefined) data.assignedTo = dto.assignedTo;
