@@ -3,6 +3,7 @@ import { IsDateString, IsEnum, IsInt, IsNumber, IsOptional } from 'class-validat
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Injectable,
   NotFoundException,
@@ -29,6 +30,12 @@ class CreateInvoiceDto {
 }
 class UpdateInvoiceStatusDto {
   @IsEnum(InvoiceStatus) status!: InvoiceStatus;
+}
+class UpdateInvoiceDto {
+  @IsOptional() @IsInt() clientId?: number;
+  @IsOptional() @IsNumber() amount?: number;
+  @IsOptional() @IsEnum(InvoiceStatus) status?: InvoiceStatus;
+  @IsOptional() @IsDateString() dueDate?: string;
 }
 
 @Injectable()
@@ -65,6 +72,22 @@ class InvoicesService {
     if (!inv) throw new NotFoundException('Invoice not found.');
     return this.fs.update(COL.invoices, id, { status });
   }
+  async update(id: number, dto: UpdateInvoiceDto) {
+    const inv = await this.fs.findById(COL.invoices, id);
+    if (!inv) throw new NotFoundException('Invoice not found.');
+    const data: Record<string, unknown> = {};
+    if (dto.clientId !== undefined) data.clientId = dto.clientId;
+    if (dto.amount !== undefined) data.amount = dto.amount;
+    if (dto.status !== undefined) data.status = dto.status;
+    if (dto.dueDate !== undefined) data.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
+    return this.fs.update(COL.invoices, id, data);
+  }
+  async remove(id: number) {
+    const inv = await this.fs.findById(COL.invoices, id);
+    if (!inv) throw new NotFoundException('Invoice not found.');
+    await this.fs.delete(COL.invoices, id);
+    return { ok: true };
+  }
   async getFull(id: number) {
     const inv = await this.fs.findById<any>(COL.invoices, id);
     if (!inv) throw new NotFoundException('Invoice not found.');
@@ -98,6 +121,18 @@ class InvoicesController {
     @Body() dto: UpdateInvoiceStatusDto,
   ) {
     return this.invoices.setStatus(id, dto.status);
+  }
+
+  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1)
+  @Put(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInvoiceDto) {
+    return this.invoices.update(id, dto);
+  }
+
+  @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1)
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.invoices.remove(id);
   }
 
   @Tiers(PermissionTier.TIER_0, PermissionTier.TIER_1)
